@@ -1,0 +1,333 @@
+import { Injectable, ConflictException, NotFoundException, UnauthorizedException, Optional } from '@nestjs/common';
+import { PrismaService } from '../../../../../prisma/prisma.service';
+import { CreateStoreDto } from '../../infrastructure/dtos/create-store.dto';
+import { MinioService } from '../../../../minio/minio.service';
+import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+
+@Injectable()
+export class StoresService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly minioService?: MinioService,
+  ) {}
+
+  async createStore(dto: CreateStoreDto) {
+    let subdomainBase = dto.subdomain ? dto.subdomain.trim().toLowerCase() : '';
+
+    if (!subdomainBase) {
+      subdomainBase = dto.title
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      if (!subdomainBase) subdomainBase = 'loja';
+    }
+
+    const RESERVED_SUBDOMAINS = ['app', 'admin', 'api', 'www', 'localhost', 'superadmin'];
+    let finalSubdomain = subdomainBase;
+
+    if (RESERVED_SUBDOMAINS.includes(finalSubdomain) || await this.prisma.store.findUnique({ where: { subdomain: finalSubdomain } })) {
+      if (dto.subdomain) {
+        throw new ConflictException(`O subdomínio "${subdomainBase}" já está em uso ou é reservado pelo sistema.`);
+      }
+      finalSubdomain = `${subdomainBase}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    const printToken = `PRT-${randomUUID().substring(0, 8).toUpperCase()}`;
+
+    const store = await this.prisma.store.create({
+      data: {
+        subdomain: finalSubdomain,
+        title: dto.title.trim(),
+        adminEmail: dto.adminEmail.trim().toLowerCase(),
+        printToken,
+      },
+    });
+
+    await this.prisma.storeSubscription.upsert({
+      where: { storeId: store.id },
+      create: {
+        storeId: store.id,
+        monthlyFee: 150,
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+      update: {},
+    });
+
+    // Criar as configurações iniciais da loja
+    await this.prisma.storeSettings.upsert({
+      where: { storeId: store.id },
+      create: {
+        storeId: store.id,
+        storeName: store.title,
+        phone: dto.phone ? dto.phone.trim() : undefined,
+      },
+      update: {
+        storeName: store.title,
+        ...(dto.phone ? { phone: dto.phone.trim() } : {}),
+      },
+    });
+
+    // Criar o usuário Admin da loja se senha fornecida (ou senha padrão admin123)
+    const passwordToUse = dto.password?.trim() || 'admin123';
+    const hashedPassword = await bcrypt.hash(passwordToUse, 10);
+
+    await this.prisma.user.upsert({
+      where: { email: dto.adminEmail.trim().toLowerCase() },
+      update: {
+        storeId: store.id,
+        role: 'ADMIN',
+        password: hashedPassword,
+      },
+      create: {
+        name: `Admin - ${store.title}`,
+        email: dto.adminEmail.trim().toLowerCase(),
+        password: hashedPassword,
+        role: 'ADMIN',
+        storeId: store.id,
+      },
+    });
+
+    return store;
+  }
+
+  async updateStore(id: string, dto: { title?: string; subdomain?: string; adminEmail?: string; password?: string }) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    const updateData: any = {};
+
+    if (dto.title && dto.title.trim()) {
+      updateData.title = dto.title.trim();
+    }
+
+    if (dto.subdomain && dto.subdomain.trim()) {
+      const subdomainNormalized = dto.subdomain.trim().toLowerCase();
+      const RESERVED_SUBDOMAINS = ['app', 'admin', 'api', 'www', 'localhost', 'superadmin'];
+
+      if (RESERVED_SUBDOMAINS.includes(subdomainNormalized)) {
+        throw new ConflictException(`O subdomínio "${subdomainNormalized}" é um nome reservado pelo sistema e não pode ser utilizado.`);
+      }
+
+      if (subdomainNormalized !== store.subdomain) {
+        const existingSubdomain = await this.prisma.store.findUnique({
+          where: { subdomain: subdomainNormalized },
+        });
+        if (existingSubdomain) {
+          throw new ConflictException(`O subdomínio "${subdomainNormalized}" já está em uso por outra loja`);
+        }
+        updateData.subdomain = subdomainNormalized;
+      }
+    }
+
+    if (dto.adminEmail && dto.adminEmail.trim()) {
+      updateData.adminEmail = dto.adminEmail.trim().toLowerCase();
+    }
+
+
+    const updatedStore = await this.prisma.store.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // 1. Atualizar StoreSettings storeName se o título mudou
+    if (updateData.title) {
+      await this.prisma.storeSettings.updateMany({
+        where: { storeId: id },
+        data: { storeName: updateData.title },
+      });
+    }
+
+    // 2. Sincronizar usuário Admin da loja se e-mail ou senha foram alterados
+    const adminUser = (await this.prisma.user.findFirst({
+      where: { storeId: id, role: 'ADMIN' },
+    })) || (await this.prisma.user.findFirst({
+      where: { email: store.adminEmail },
+    }));
+
+    if (adminUser) {
+      const userUpdateData: any = {};
+      if (updateData.adminEmail) {
+        userUpdateData.email = updateData.adminEmail;
+      }
+      if (updateData.title) {
+        userUpdateData.name = `Admin - ${updateData.title}`;
+      }
+      if (dto.password && dto.password.trim()) {
+        userUpdateData.password = await bcrypt.hash(dto.password.trim(), 10);
+      }
+
+      if (Object.keys(userUpdateData).length > 0) {
+        await this.prisma.user.update({
+          where: { id: adminUser.id },
+          data: userUpdateData,
+        });
+      }
+    }
+
+    return updatedStore;
+  }
+
+  async listStores() {
+    return this.prisma.store.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        subscription: true,
+        _count: {
+          select: {
+            products: true,
+            orders: true,
+            customers: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getStoreBySubdomain(subdomain: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { subdomain: subdomain.toLowerCase() },
+      include: {
+        storeSettings: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException(`Loja com subdomínio "${subdomain}" não encontrada`);
+    }
+
+    return store;
+  }
+
+  async getStoreById(id: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+      include: {
+        storeSettings: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    return store;
+  }
+
+  async validatePrintToken(token: string) {
+    if (!token || !token.trim()) {
+      throw new UnauthorizedException('Token de impressão não informado');
+    }
+
+    const cleanToken = token.trim();
+
+    const store = await this.prisma.store.findFirst({
+      where: {
+        OR: [
+          { printToken: { equals: cleanToken, mode: 'insensitive' } },
+          { printToken: { equals: cleanToken.toUpperCase(), mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!store) {
+      throw new UnauthorizedException('Token de impressão inválido. Verifique o token no Painel Admin.');
+    }
+
+    if (!store.isActive) {
+      throw new UnauthorizedException('Loja inativa. A impressora não pode ser autenticada.');
+    }
+
+    return {
+      success: true,
+      storeId: store.id,
+      storeName: store.title,
+      subdomain: store.subdomain,
+      printToken: store.printToken,
+    };
+  }
+
+  async getPrintTokenForStore(storeId: string) {
+    let store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    if (!store.printToken) {
+      const printToken = `PRT-${randomUUID().substring(0, 8).toUpperCase()}`;
+      store = await this.prisma.store.update({
+        where: { id: storeId },
+        data: { printToken },
+      });
+    }
+
+    return {
+      printToken: store.printToken,
+    };
+  }
+
+  async rotatePrintToken(storeId: string) {
+    const printToken = `PRT-${randomUUID().substring(0, 8).toUpperCase()}`;
+    const store = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { printToken },
+    });
+
+    return {
+      printToken: store.printToken,
+    };
+  }
+
+  async toggleActive(id: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    const updatedStore = await this.prisma.store.update({
+      where: { id },
+      data: { isActive: !store.isActive },
+    });
+
+    return updatedStore;
+  }
+
+  async deleteStore(id: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Loja não encontrada');
+    }
+
+    // Limpa todos os arquivos da loja no MinIO (logos, favicons, banners, imagens de produtos/categorias)
+    if (this.minioService) {
+      await this.minioService.deleteFolder(id).catch((err) => {
+        console.error(`[StoresService] Erro ao deletar arquivos da loja ${id} no MinIO:`, err);
+      });
+    }
+
+    await this.prisma.store.delete({
+      where: { id },
+    });
+
+    return { success: true, message: 'Loja excluída com sucesso' };
+  }
+}

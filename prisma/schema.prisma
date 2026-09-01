@@ -1,0 +1,561 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum BillingStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum BillingPaymentMethod {
+  CREDIT_CARD
+  PIX_AUTO
+  UNKNOWN
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  PAID
+  REFUSED
+  REFUNDED
+  CHARGEBACK
+}
+
+model Store {
+  id         String   @id @default(uuid())
+  subdomain  String   @unique
+  title      String
+  adminEmail String
+  printToken String?  @unique @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users                  User[]
+  categories             Category[]
+  products               Product[]
+  storeSettings          StoreSettings?
+  coupons                Coupon[]
+  customers              Customer[]
+  orders                 Order[]
+  cashRegisters          CashRegister[]
+  fixedCosts             FixedCost[]
+  cashTransactions       CashTransaction[]
+  investmentTransactions InvestmentTransaction[]
+  storeSessions          StoreSession[]
+  customerAddresses      CustomerAddress[]
+  stockMovements         StockMovement[]
+  subscription           StoreSubscription?
+  billingPayments        BillingPayment[]
+  adminAuditLogs         AdminAuditLog[]
+
+  isActive Boolean @default(true)
+
+  @@map("stores")
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  storeId             String?
+  name                String
+  email               String   @unique
+  password            String
+  role                Role     @default(USER)
+  refreshToken        String?
+  expoPushToken       String?
+  webPushSubscription Json?
+  createdAt           DateTime @default(now())
+
+  store          Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  adminAuditLogs AdminAuditLog[]
+
+  @@map("users")
+}
+
+enum BillingPlanCheckoutType {
+  SINGLE_PRODUCT
+  RECURRING_SUBSCRIPTION
+}
+
+model BillingPlan {
+  id                     String                  @id @default(uuid())
+  name                   String
+  description            String?
+  price                  Decimal                 @db.Decimal(10, 2)
+  trialDays              Int                     @default(7)
+  isActive               Boolean                 @default(true)
+  isPublic               Boolean                 @default(true)
+  checkoutType           BillingPlanCheckoutType @default(RECURRING_SUBSCRIPTION)
+  providerProductId      String?                 @unique
+  nextSubscriptionPlanId String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  nextSubscriptionPlan BillingPlan?  @relation("PlanSequence", fields: [nextSubscriptionPlanId], references: [id], onDelete: SetNull)
+  previousPlans        BillingPlan[] @relation("PlanSequence")
+
+  subscriptions StoreSubscription[]
+  payments      BillingPayment[]
+
+  @@map("billing_plans")
+}
+
+model StoreSubscription {
+  id                     String               @id @default(uuid())
+  storeId                String               @unique
+  planId                 String?
+  provider               String               @default("CAKTO")
+  providerCustomerId     String?
+  providerSubscriptionId String?              @unique
+  providerOrderId        String?              @unique
+  paymentMethod          BillingPaymentMethod @default(UNKNOWN)
+  status                 BillingStatus        @default(TRIALING)
+  monthlyFee             Decimal              @default(150.00) @db.Decimal(10, 2)
+  supportSelected        Boolean              @default(false)
+  supportPaidAt          DateTime?
+  trialStartedAt         DateTime             @default(now())
+  trialEndsAt            DateTime?
+  currentPeriodEndsAt    DateTime?
+  paymentDueAt           DateTime?
+  overdueSince           DateTime?
+  gracePeriodEndsAt      DateTime?
+  suspendedAt            DateTime?
+  canceledAt             DateTime?
+  lastProviderSyncAt     DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  plan     BillingPlan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  payments BillingPayment[]
+
+  @@index([status, gracePeriodEndsAt])
+  @@map("store_subscriptions")
+}
+
+model BillingPayment {
+  id                String               @id @default(uuid())
+  storeId           String
+  subscriptionId    String?
+  planId            String?
+  providerPaymentId String?              @unique
+  providerOrderId   String?
+  kind              String               @default("MONTHLY_FEE")
+  method            BillingPaymentMethod @default(UNKNOWN)
+  status            BillingPaymentStatus @default(PENDING)
+  amount            Decimal              @db.Decimal(10, 2)
+  dueAt             DateTime?
+  paidAt            DateTime?
+  raw               Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  store        Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  subscription StoreSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  plan         BillingPlan?       @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@map("billing_payments")
+}
+
+model CaktoWebhookEvent {
+  id          String    @id @default(uuid())
+  providerId  String    @unique
+  event       String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@map("cakto_webhook_events")
+}
+
+model AdminAuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  storeId   String?
+  action    String
+  reason    String?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  actor User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  store Store? @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@map("admin_audit_logs")
+}
+
+model Category {
+  id                    String    @id @default(uuid())
+  storeId               String?
+  externalId            String?   @unique
+  title                 String
+  image                 String?
+  isVisible             Boolean   @default(true)
+  excludeFromBestSeller Boolean   @default(false)
+  order                 Int       @default(0)
+  deletedAt             DateTime?
+
+  store    Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id           String    @id @default(uuid())
+  storeId      String?
+  externalId   String?   @unique
+  title        String
+  categoryId   String
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+  isVisible    Boolean   @default(true)
+  isBestSeller Boolean   @default(false)
+
+  price            Decimal? @db.Decimal(10, 2)
+  promotionalPrice Decimal? @db.Decimal(10, 2)
+  costPrice        Decimal? @db.Decimal(10, 2)
+  stock            Int      @default(0)
+
+  store          Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category       Category        @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+
+  @@map("products")
+}
+
+model StoreSettings {
+  id             String   @id @default(uuid())
+  storeId        String?  @unique
+  storeName      String   @default("Minha Loja")
+  logoUrl        String?
+  whiteLogoUrl   String?
+  faviconUrl     String?
+  topHeaderText  String?
+  bannerUrls     String[]
+  phone          String   @default("")
+  instagram      String?
+  pixelId        String?
+  marketingLinks Json?
+
+  // Endereço
+  cep          String  @default("")
+  street       String  @default("")
+  number       String  @default("")
+  neighborhood String  @default("")
+  city         String  @default("")
+  state        String  @default("")
+  complement   String?
+  hideAddress  Boolean @default(false)
+
+  // Pagamentos
+  pixEnabled Boolean @default(false)
+  pixKeyType String?
+  pixKey     String?
+  pixHolder  String?
+
+  payOnDeliveryCash       Boolean @default(false)
+  payOnDeliveryCardDebit  Boolean @default(false)
+  payOnDeliveryCardCredit Boolean @default(false)
+
+  paymentRules     Json?
+  installmentRules Json?
+  businessHours    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("store_settings")
+}
+
+enum DiscountType {
+  VALUE
+  PERCENTAGE
+  FREE_SHIPPING
+}
+
+model Coupon {
+  id                      String       @id @default(uuid())
+  storeId                 String?
+  title                   String
+  status                  Boolean      @default(true)
+  type                    DiscountType
+  value                   Decimal?     @db.Decimal(10, 2)
+  validUntilDate          DateTime?
+  startTime               DateTime?
+  endTime                 DateTime?
+  maxUses                 Int?
+  currentUses             Int          @default(0)
+  minOrderValue           Decimal?     @db.Decimal(10, 2)
+  applyToPromotionalItems Boolean      @default(false)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  store  Store?  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([storeId, title])
+  @@map("coupons")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  storeId   String?
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store     Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  addresses CustomerAddress[]
+  orders    Order[]
+
+  @@unique([storeId, phone])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id           String   @id @default(uuid())
+  storeId      String?
+  customerId   String
+  street       String
+  number       String
+  neighborhood String
+  city         String
+  state        String
+  cep          String
+  complement   String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  store    Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_addresses")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  DISPATCHED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+model Order {
+  id          String  @id @default(uuid())
+  storeId     String?
+  externalId  String? @unique
+  orderNumber Int     @default(autoincrement())
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  customerName  String
+  customerPhone String
+
+  // Valores monetários
+  itemsTotal    Decimal @db.Decimal(10, 2)
+  totalOrder    Decimal @db.Decimal(10, 2)
+  totalReceived Decimal @db.Decimal(10, 2)
+  cardFee       Decimal @default(0) @db.Decimal(10, 2)
+
+  paymentDiscount      Decimal  @default(0) @db.Decimal(10, 2)
+  installmentSurcharge Decimal  @default(0) @db.Decimal(10, 2)
+  couponDiscount       Decimal  @default(0) @db.Decimal(10, 2)
+  receiptDiscount      Decimal  @default(0) @db.Decimal(10, 2)
+  receiptSurcharge     Decimal  @default(0) @db.Decimal(10, 2)
+  amountProvided       Decimal? @db.Decimal(10, 2)
+  changeAmount         Decimal? @db.Decimal(10, 2)
+
+  // Regras aplicadas (JSON)
+  appliedTaxRule    Json?
+  appliedCouponRule Json?
+
+  // Pagamento
+  paymentType   String // Ex: "Online", "Presencial"
+  paymentMethod String // Ex: "PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"
+  pixKey        String?
+
+  observation String?
+
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  installments  Int?          @default(1)
+  paymentDate   DateTime?
+  isPrinted     Boolean       @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  couponId String?
+  coupon   Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  productId   String?
+  productName String
+  price       Decimal @db.Decimal(10, 2)
+  quantity    Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+model CashRegister {
+  id        String   @id @default(uuid())
+  storeId   String?
+  title     String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store        Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions CashTransaction[]
+
+  @@map("cash_registers")
+}
+
+model FixedCost {
+  id                String   @id @default(uuid())
+  storeId           String?
+  name              String
+  value             Decimal  @db.Decimal(10, 2)
+  repeats           Boolean  @default(true)
+  type              String   @default("ALWAYS") // "ALWAYS", "INSTALLMENTS"
+  installmentsCount Int?     @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  store        Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions CashTransaction[]
+
+  @@map("fixed_costs")
+}
+
+model CashTransaction {
+  id             String   @id @default(uuid())
+  storeId        String?
+  cashRegisterId String?
+  type           String // "ENTRY", "OUTFLOW"
+  category       String?  @default("GENERAL")
+  amount         Decimal  @db.Decimal(10, 2)
+  description    String
+  date           DateTime @default(now())
+  fixedCostId    String?
+  createdAt      DateTime @default(now())
+
+  store        Store?        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  fixedCost    FixedCost?    @relation(fields: [fixedCostId], references: [id], onDelete: SetNull)
+
+  @@map("cash_transactions")
+}
+
+model InvestmentTransaction {
+  id          String   @id @default(uuid())
+  storeId     String?
+  type        String // "ENTRY", "OUTFLOW"
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("investment_transactions")
+}
+
+enum StockMovementType {
+  ADD
+  SUBTRACT
+  SET
+}
+
+model StockMovement {
+  id            String            @id @default(uuid())
+  storeId       String?
+  type          StockMovementType
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  observation   String?           @db.Text
+  createdAt     DateTime          @default(now())
+
+  store     Store?  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+model StoreSession {
+  id              String   @id @default(uuid())
+  storeId         String?
+  sessionId       String   @unique
+  startedAt       DateTime @default(now())
+  lastHeartbeatAt DateTime @default(now())
+  durationSeconds Int      @default(0)
+  isConverted     Boolean  @default(false)
+
+  store     Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cartDraft CartDraft?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("store_sessions")
+}
+
+model CartDraft {
+  id          String       @id @default(uuid())
+  sessionId   String       @unique
+  session     StoreSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  cartItems   Json
+  totalAmount Decimal      @db.Decimal(10, 2)
+  isAbandoned Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cart_drafts")
+}
