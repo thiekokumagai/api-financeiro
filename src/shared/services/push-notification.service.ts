@@ -3,11 +3,15 @@ import * as webpush from 'web-push';
 import { ISettingsRepository } from '../../modules/settings/domain/repositories/isettings.repository';
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    'mailto:admin@podemais.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
+  try {
+    webpush.setVapidDetails(
+      'mailto:admin@financeiro.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+  } catch (error) {
+    console.warn('[PushNotificationService] Chaves VAPID inválidas ou não configuradas:', (error as Error).message);
+  }
 }
 
 @Injectable()
