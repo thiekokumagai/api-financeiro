@@ -19,6 +19,7 @@ export class StoreProductsController {
   async findAll(@Query() query: ListProductsDto) {
     const { products, total } = await this.listProductsUseCase.execute({
       ...query,
+      limit: query.limit || 1000,
       isVisible: true,
     });
     
