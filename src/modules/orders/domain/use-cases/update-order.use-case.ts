@@ -3,7 +3,6 @@ import { IOrdersRepository } from '../repositories/iorders.repository';
 import { Order } from '../entities/order.entity';
 import { ValidateCouponUseCase } from '../../../coupons/domain/use-cases/validate-coupon.use-case';
 import type { ICouponsRepository } from '../../../coupons/domain/repositories/icoupons.repository';
-import { PrintGateway } from '../../../print/print.gateway';
 import { EventsGateway } from '../../../events/events.gateway';
 import { TenantContextService } from '../../../tenant/tenant-context.service';
 
@@ -14,7 +13,6 @@ export class UpdateOrderUseCase {
     private readonly validateCouponUseCase: ValidateCouponUseCase,
     @Inject('ICouponsRepository')
     private readonly couponsRepository: ICouponsRepository,
-    private readonly printGateway: PrintGateway,
     private readonly eventsGateway: EventsGateway,
     private readonly tenantContextService: TenantContextService,
   ) {}
@@ -80,15 +78,7 @@ export class UpdateOrderUseCase {
         }
       }
 
-      try {
-        if (savedOrder.status !== 'CANCELLED') {
-          const orderForPrint = { ...savedOrder, showProductPrices: data.showProductPrices };
-          const printStoreId = savedOrder.storeId || existingOrder.storeId || storeId || '1';
-          this.printGateway.emitNovoPedido(printStoreId, orderForPrint);
-        }
-      } catch (err) {
-        console.error('Erro ao emitir pedido para impressão', err);
-      }
+
 
       try {
         this.eventsGateway.notifyNewOrder(savedOrder);

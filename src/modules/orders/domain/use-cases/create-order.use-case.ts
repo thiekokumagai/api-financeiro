@@ -5,7 +5,6 @@ import { ValidateCouponUseCase } from '../../../coupons/domain/use-cases/validat
 import type { ICouponsRepository } from '../../../coupons/domain/repositories/icoupons.repository';
 import { PushNotificationService } from '../../../../shared/services/push-notification.service';
 import { IUsersRepository } from '../../../users/domain/repositories/iusers.repository';
-import { PrintGateway } from '../../../print/print.gateway';
 import { EventsGateway } from '../../../events/events.gateway';
 import { TenantContextService } from '../../../tenant/tenant-context.service';
 
@@ -18,7 +17,6 @@ export class CreateOrderUseCase {
     private readonly couponsRepository: ICouponsRepository,
     private readonly pushNotificationService: PushNotificationService,
     private readonly usersRepository: IUsersRepository,
-    private readonly printGateway: PrintGateway,
     private readonly eventsGateway: EventsGateway,
     private readonly tenantContextService: TenantContextService,
   ) {}
@@ -127,16 +125,7 @@ export class CreateOrderUseCase {
         console.error('Erro ao buscar tokens para notificação', err);
       }
 
-      // Disparar WebSocket para impressão
-      try {
-        if (savedOrder.status !== 'CANCELLED') {
-          const orderForPrint = { ...savedOrder, showProductPrices: data.showProductPrices };
-          const targetPrintStoreId = savedOrder.storeId || storeId || '1';
-          this.printGateway.emitNovoPedido(targetPrintStoreId, orderForPrint);
-        }
-      } catch (err) {
-        console.error('Erro ao emitir pedido para impressão', err);
-      }
+
 
       // Disparar Eventos WebSocket
       try {

@@ -16,7 +16,6 @@ import { FixedCostsModule } from './modules/fixed-costs/fixed-costs.module';
 import { InvestmentsModule } from './modules/investments/investments.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CustomersModule } from './modules/customers/customers.module';
-import { PrintModule } from './modules/print/print.module';
 import { EventsModule } from './modules/events/events.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -52,7 +51,6 @@ import { BillingModule } from './modules/billing/billing.module';
     InvestmentsModule,
     DashboardModule,
     CustomersModule,
-    PrintModule,
     EventsModule,
     AnalyticsModule,
     BillingModule,
