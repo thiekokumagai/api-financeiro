@@ -75,7 +75,6 @@ model User {
   password            String
   role                Role     @default(USER)
   refreshToken        String?
-  expoPushToken       String?
   webPushSubscription Json?
   createdAt           DateTime @default(now())
 

@@ -113,11 +113,10 @@ export class CreateOrderUseCase {
             }
           }
         });
-        if (tokens.length > 0 || webSubscriptions.length > 0) {
+        if (webSubscriptions.length > 0) {
           const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
           const formattedValue = formatter.format(Number(savedOrder.totalOrder || 0));
           this.pushNotificationService.sendNotifications(
-            tokens,
             `(${formattedValue}) Oba! Chegou pedido 🤩`,
             `Pedido nº #${savedOrder.orderNumber} - ${savedOrder.customerName}`,
             { orderId: savedOrder.id },

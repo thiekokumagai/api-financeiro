@@ -15,10 +15,8 @@ import { DeleteUserDto } from '../dtos/delete-user.dto';
 import { ListUsersUseCase } from '../../domain/use-cases/list-users.use-case';
 import { CreateUserUseCase } from '../../domain/use-cases/create-user.use-case';
 import { DeleteUserUseCase } from '../../domain/use-cases/delete-user.use-case';
-import { UpdatePushTokenUseCase } from '../../domain/use-cases/update-push-token.use-case';
 import { UpdateWebPushSubscriptionUseCase } from '../../domain/use-cases/update-web-push-subscription.use-case';
 import { TestPushNotificationUseCase } from '../../domain/use-cases/test-push-notification.use-case';
-import { UpdatePushTokenDto } from '../dtos/update-push-token.dto';
 import { UpdateWebPushSubscriptionDto } from '../dtos/update-web-push-subscription.dto';
 import { UpdatePasswordDto } from '../dtos/update-password.dto';
 import { CurrentUser } from '../../../auth/infrastructure/decorators/current-user.decorator';
@@ -34,7 +32,6 @@ export class UsersController {
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
-    private readonly updatePushTokenUseCase: UpdatePushTokenUseCase,
     private readonly updateWebPushSubscriptionUseCase: UpdateWebPushSubscriptionUseCase,
     private readonly testPushNotificationUseCase: TestPushNotificationUseCase,
     private readonly updatePasswordUseCase: UpdatePasswordUseCase,
@@ -84,20 +81,6 @@ export class UsersController {
   })
   delete(@Param() params: DeleteUserDto) {
     return this.deleteUserUseCase.execute(params.id);
-  }
-
-  @Post('push-token')
-  @ApiOperation({ summary: 'Registrar Expo Push Token do usuário' })
-  @ApiResponse({
-    status: 200,
-    description: 'Token registrado com sucesso',
-  })
-  async registerPushToken(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: UpdatePushTokenDto,
-  ) {
-    await this.updatePushTokenUseCase.execute(user.sub, dto.token);
-    return { success: true };
   }
 
   @Post('web-push-subscription')

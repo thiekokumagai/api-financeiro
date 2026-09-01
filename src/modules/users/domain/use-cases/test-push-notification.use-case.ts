@@ -17,20 +17,18 @@ export class TestPushNotificationUseCase {
       throw new UserNotFoundError(userId);
     }
 
-    if (!user.expoPushToken && !user.webPushSubscription) {
-      throw new BadRequestException('Usuário não possui token de notificação registrado.');
+    if (!user.webPushSubscription) {
+      throw new BadRequestException('Usuário não possui assinatura de notificação registrada.');
     }
 
     try {
-      const tokens = user.expoPushToken ? user.expoPushToken.split(',').filter(Boolean) : [];
       const webSubs = user.webPushSubscription 
         ? (Array.isArray(user.webPushSubscription) ? user.webPushSubscription : [user.webPushSubscription]) 
         : [];
       
       await this.pushNotificationService.sendNotifications(
-        tokens,
         'Teste de Notificação 🚀',
-        'Seu dispositivo está pronto para receber notificações de novos pedidos!',
+        'Seu dispositivo está pronto para receber notificações!',
         undefined,
         webSubs
       );
