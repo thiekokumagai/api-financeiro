@@ -4,6 +4,7 @@ import { GetSettingsUseCase } from '../../domain/use-cases/get-settings.use-case
 import { Public } from '../../../auth/infrastructure/decorators/public.decorator';
 
 @ApiTags('Store Settings')
+@Public()
 @Controller('store/settings')
 export class StoreSettingsController {
   constructor(private readonly getSettingsUseCase: GetSettingsUseCase) {}
@@ -17,6 +18,7 @@ export class StoreSettingsController {
   }
 
   @Get('status')
+  @Public()
   @ApiOperation({ summary: 'Obter status atual da loja (aberta/fechada)' })
   @ApiResponse({ status: 200 })
   async getStoreStatus() {

@@ -12,10 +12,23 @@ export class PrismaSettingsRepository implements ISettingsRepository {
   ) {}
 
   async get(): Promise<StoreSettings | null> {
-    const storeId = this.tenantContextService.getStoreId();
+    let storeId = this.tenantContextService.getStoreId();
+
     if (!storeId) {
+      const firstStore = await this.prisma.store.findFirst({
+        orderBy: { createdAt: 'asc' },
+      });
+      if (firstStore) {
+        storeId = firstStore.id;
+      }
+    }
+
+    if (!storeId) {
+      const firstRecord = await this.prisma.storeSettings.findFirst();
+      if (firstRecord) return firstRecord as unknown as StoreSettings;
       return null;
     }
+
     let record = await this.prisma.storeSettings.findFirst({
       where: { storeId },
     });
@@ -32,6 +45,8 @@ export class PrismaSettingsRepository implements ISettingsRepository {
             storeName: store.title,
           },
         });
+      } else {
+        record = await this.prisma.storeSettings.findFirst();
       }
     }
 
