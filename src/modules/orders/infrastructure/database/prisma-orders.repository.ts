@@ -394,7 +394,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
       });
 
       return createdOrder;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     return this.mapToDomain(record);
   }
@@ -524,7 +524,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
       });
 
       return updatedOrder;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     return this.mapToDomain(record);
   }
@@ -582,7 +582,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
       });
 
       return updatedOrder;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     return this.mapToDomain(record);
   }
@@ -646,7 +646,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
       });
 
       return updatedOrder;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     return this.mapToDomain(record);
   }
