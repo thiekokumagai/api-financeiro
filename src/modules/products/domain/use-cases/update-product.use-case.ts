@@ -11,11 +11,9 @@ export class UpdateProductUseCase {
       title?: string;
       categoryId?: string;
       price?: number;
-      promotionalPrice?: number;
       costPrice?: number;
       stock?: number;
       isVisible?: boolean;
-      isBestSeller?: boolean;
     },
   ) {
     const product = await this.productsRepository.findById(id);

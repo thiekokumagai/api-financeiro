@@ -21,9 +21,6 @@ export class ProductResponseDto {
   @ApiProperty({ required: false, nullable: true, example: '49.90' })
   price?: string | number | null;
 
-  @ApiProperty({ required: false, nullable: true, example: '39.90' })
-  promotionalPrice?: string | number | null;
-
   @ApiProperty({ required: false, nullable: true, example: '25.00' })
   costPrice?: string | number | null;
 
@@ -32,9 +29,6 @@ export class ProductResponseDto {
 
   @ApiProperty({ required: false, nullable: true })
   isVisible?: boolean;
-
-  @ApiProperty({ required: false, nullable: true })
-  isBestSeller?: boolean;
 
   @ApiProperty()
   createdAt: Date;

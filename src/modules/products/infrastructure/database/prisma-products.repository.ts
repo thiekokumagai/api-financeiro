@@ -18,11 +18,9 @@ export class PrismaProductsRepository implements IProductsRepository {
     title: string;
     categoryId: string;
     price?: number | null;
-    promotionalPrice?: number | null;
     costPrice?: number | null;
     stock?: number;
     isVisible?: boolean;
-    isBestSeller?: boolean;
   }): Promise<Product> {
     const storeId = this.tenantContextService.getStoreId() || undefined;
 
@@ -31,11 +29,9 @@ export class PrismaProductsRepository implements IProductsRepository {
         title: data.title,
         categoryId: data.categoryId,
         price: data.price ?? null,
-        promotionalPrice: data.promotionalPrice ?? null,
         costPrice: data.costPrice ?? null,
         stock: data.stock ?? 0,
         isVisible: data.isVisible ?? true,
-        isBestSeller: data.isBestSeller ?? false,
         storeId,
       },
     });
@@ -47,11 +43,9 @@ export class PrismaProductsRepository implements IProductsRepository {
       title?: string;
       categoryId?: string;
       price?: number | null;
-      promotionalPrice?: number | null;
       costPrice?: number | null;
       stock?: number;
       isVisible?: boolean;
-      isBestSeller?: boolean;
     },
   ): Promise<Product> {
     const storeId = this.tenantContextService.getStoreId() || undefined;
@@ -62,15 +56,9 @@ export class PrismaProductsRepository implements IProductsRepository {
         ...(data.title !== undefined && { title: data.title }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         ...(data.price !== undefined && { price: data.price }),
-        ...(data.promotionalPrice !== undefined && {
-          promotionalPrice: data.promotionalPrice,
-        }),
         ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
         ...(data.stock !== undefined && { stock: data.stock }),
         ...(data.isVisible !== undefined && { isVisible: data.isVisible }),
-        ...(data.isBestSeller !== undefined && {
-          isBestSeller: data.isBestSeller,
-        }),
       },
     });
   }
@@ -242,11 +230,9 @@ export class PrismaProductsRepository implements IProductsRepository {
         title: `${original.title} (Cópia)`,
         categoryId: original.categoryId,
         price: original.price,
-        promotionalPrice: original.promotionalPrice,
         costPrice: original.costPrice,
         stock: 0,
         isVisible: original.isVisible,
-        isBestSeller: original.isBestSeller,
       },
       include: {
         category: true,

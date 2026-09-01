@@ -9,11 +9,9 @@ export abstract class IProductsRepository {
     title: string;
     categoryId: string;
     price?: number | null;
-    promotionalPrice?: number | null;
     costPrice?: number | null;
     stock?: number;
     isVisible?: boolean;
-    isBestSeller?: boolean;
   }): Promise<Product>;
 
   abstract update(
@@ -22,11 +20,9 @@ export abstract class IProductsRepository {
       title?: string;
       categoryId?: string;
       price?: number | null;
-      promotionalPrice?: number | null;
       costPrice?: number | null;
       stock?: number;
       isVisible?: boolean;
-      isBestSeller?: boolean;
     },
   ): Promise<Product>;
 

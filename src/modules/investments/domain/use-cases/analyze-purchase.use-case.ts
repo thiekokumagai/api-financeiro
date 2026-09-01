@@ -149,7 +149,7 @@ export class AnalyzePurchaseUseCase {
       const currentStock = product.stock;
 
       const costPrice = Number(product.costPrice || 0);
-      const salePrice = Number(product.promotionalPrice || product.price || 0);
+      const salePrice = Number(product.price || 0);
 
       let description = product.title;
       let variation = '';

@@ -9,11 +9,9 @@ export class CreateProductUseCase {
     title: string;
     categoryId: string;
     price?: number;
-    promotionalPrice?: number;
     costPrice?: number;
     stock?: number;
     isVisible?: boolean;
-    isBestSeller?: boolean;
   }) {
     const categoryExists = await this.productsRepository.checkCategoryExists(
       dto.categoryId,
