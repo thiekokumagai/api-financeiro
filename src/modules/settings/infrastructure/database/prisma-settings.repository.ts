@@ -71,9 +71,6 @@ export class PrismaSettingsRepository implements ISettingsRepository {
       state: settings.state,
       complement: settings.complement,
       hideAddress: settings.hideAddress,
-      deliveryOriginCep: settings.deliveryOriginCep,
-      deliveryOriginNumber: settings.deliveryOriginNumber,
-      deliveryRanges: settings.deliveryRanges ?? [],
       installmentRules: settings.installmentRules ?? [],
       businessHours: settings.businessHours ?? null,
       pixEnabled: settings.pixEnabled,
@@ -86,12 +83,17 @@ export class PrismaSettingsRepository implements ISettingsRepository {
       paymentRules: settings.paymentRules ?? [],
     };
 
-    const result = await this.prisma.storeSettings.upsert({
-      where: { storeId },
-      create: dataPayload,
-      update: dataPayload,
-    });
-
-    return result as unknown as StoreSettings;
+    if (existing) {
+      const result = await this.prisma.storeSettings.update({
+        where: { id: existing.id },
+        data: dataPayload,
+      });
+      return result as unknown as StoreSettings;
+    } else {
+      const result = await this.prisma.storeSettings.create({
+        data: dataPayload,
+      });
+      return result as unknown as StoreSettings;
+    }
   }
 }

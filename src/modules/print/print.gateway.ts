@@ -66,7 +66,7 @@ export class PrintGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
       
     } else {
-      console.warn(`⚠️ Print Agent conectou sem token ou store_id (Socket: ${client.id})`);
+      // Conexão genérica de socket
     }
   }
 
