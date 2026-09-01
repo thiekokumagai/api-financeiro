@@ -22,52 +22,48 @@ async function main() {
 
   console.log('✅ Dados anteriores limpos com sucesso.');
 
-  const hashedPassword = await bcrypt.hash('admin123', 10);
+  const passSuper = await bcrypt.hash('admin123', 10);
+  const passLoja = await bcrypt.hash('loja123', 10);
 
-  // 1. Criar Único Super Admin (admin@admin.com / admin123)
+  // 1. Criar Super Admin
   const superAdmin = await prisma.user.create({
     data: {
       name: 'Super Admin',
       email: 'admin@admin.com',
-      password: hashedPassword,
+      password: passSuper,
       role: 'SUPER_ADMIN',
     },
   });
-  console.log('👑 Super Admin criado com sucesso:', superAdmin.email);
+  console.log('👑 Super Admin criado:', superAdmin.email);
 
-  // 2. Criar Loja Demo Inicial
-  const demoStore = await prisma.store.create({
+  // 2. Criar Loja Normal
+  const store = await prisma.store.create({
     data: {
-      subdomain: 'demo',
-      title: 'Financeiro Demo',
-      adminEmail: 'demo@financeiro.com',
-      printToken: 'PRT-DEMO1234',
+      subdomain: 'loja',
+      title: 'Minha Loja Financeiro',
+      adminEmail: 'loja@financeiro.com',
+      printToken: 'PRT-LOJA1234',
     },
   });
-  console.log('🏪 Loja Demo criada:', demoStore.subdomain);
+  console.log('🏪 Loja Normal criada:', store.subdomain);
 
-  // 3. Criar usuário Admin da Loja Demo
+  // 3. Criar Usuário Admin da Loja Normal
   const storeAdmin = await prisma.user.create({
     data: {
-      name: 'Admin Demo',
-      email: 'demo@admin.com',
-      password: hashedPassword,
+      name: 'Administrador da Loja',
+      email: 'loja@financeiro.com',
+      password: passLoja,
       role: 'ADMIN',
-      storeId: demoStore.id,
+      storeId: store.id,
     },
   });
-  console.log('👤 Admin da Loja Demo criado:', storeAdmin.email);
+  console.log('👤 Admin da Loja criado:', storeAdmin.email);
 
-  // 4. Criar Store Settings para a Loja Demo
-  await prisma.storeSettings.upsert({
-    where: { storeId: demoStore.id },
-    update: {
-      storeName: demoStore.title,
-      phone: '67999999999',
-    },
-    create: {
-      storeId: demoStore.id,
-      storeName: demoStore.title,
+  // 4. Store Settings
+  await prisma.storeSettings.create({
+    data: {
+      storeId: store.id,
+      storeName: store.title,
       phone: '67999999999',
     },
   });
@@ -75,26 +71,33 @@ async function main() {
   // 5. Categoria Inicial
   const category = await prisma.category.create({
     data: {
-      storeId: demoStore.id,
+      storeId: store.id,
       title: 'Geral',
       isVisible: true,
     },
   });
 
-  // 6. Produto Inicial
-  const productId = '8b18985c-dd71-468e-bb9d-aebce76eb059';
+  // 6. Produto Exemplo
   await prisma.product.create({
     data: {
-      id: productId,
-      storeId: demoStore.id,
+      storeId: store.id,
       title: 'Produto Exemplo',
       categoryId: category.id,
-      price: 70.00,
+      price: 50.00,
       stock: 100,
     },
   });
 
-  console.log('🚀 Seed concluído! Super Admin ativado em admin@admin.com com a senha admin123.');
+  console.log('\n🚀 Usuários criados com sucesso!');
+  console.log('----------------------------------------');
+  console.log('👑 SUPER ADMIN:');
+  console.log('   Email: admin@admin.com');
+  console.log('   Senha: admin123');
+  console.log('----------------------------------------');
+  console.log('🏪 LOJA NORMAL:');
+  console.log('   Email: loja@financeiro.com');
+  console.log('   Senha: loja123');
+  console.log('----------------------------------------');
 }
 
 main()
