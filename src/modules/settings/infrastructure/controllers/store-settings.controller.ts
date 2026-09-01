@@ -9,6 +9,7 @@ export class StoreSettingsController {
   constructor(private readonly getSettingsUseCase: GetSettingsUseCase) {}
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Obter configurações públicas da loja (vitrine)' })
   @ApiResponse({ status: 200 })
   async getStoreSettings() {
