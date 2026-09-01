@@ -59,8 +59,6 @@ export class PushNotificationService {
     if (settings?.faviconUrl) {
       if (settings.faviconUrl.startsWith('http')) {
         iconUrl = settings.faviconUrl;
-      } else if (process.env.MINIO_PUBLIC_URL && process.env.MINIO_BUCKET) {
-        iconUrl = `${process.env.MINIO_PUBLIC_URL}/${process.env.MINIO_BUCKET}/${settings.faviconUrl}`;
       }
     }
 

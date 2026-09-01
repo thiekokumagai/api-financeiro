@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CategoriesController } from './infrastructure/controllers/categories.controller';
 import { StoreCategoriesController } from './infrastructure/controllers/store-categories.controller';
-import { MinioModule } from '../../minio/minio.module';
 import { ICategoriesRepository } from './domain/repositories/icategories.repository';
 import { PrismaCategoriesRepository } from './infrastructure/database/prisma-categories.repository';
 
@@ -13,7 +12,7 @@ import { UpdateBatchOrderUseCase } from './domain/use-cases/update-batch-order.u
 import { DeleteCategoryUseCase } from './domain/use-cases/delete-category.use-case';
 
 @Module({
-  imports: [MinioModule],
+  imports: [],
   controllers: [CategoriesController, StoreCategoriesController],
   providers: [
     ListCategoriesUseCase,

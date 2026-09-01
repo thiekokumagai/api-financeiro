@@ -7,30 +7,20 @@ import {
   Param,
   Delete,
   UseGuards,
-  UseInterceptors,
-  UploadedFile,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-
-import { FileInterceptor } from '@nestjs/platform-express';
-import sharp from 'sharp';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
-  ApiConsumes,
-  ApiBody,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/infrastructure/guards/jwt-auth.guard';
-import { MinioService } from '../../../../minio/minio.service';
-
 import { CreateCategoryDto } from '../dtos/create-category.dto';
 import { UpdateCategoryDto, UpdateOrderDto } from '../dtos/update-category.dto';
 import { CategoryResponseDto } from '../dtos/category-response.dto';
-import { UploadedFile as UploadedFileType } from '../../../../common/types/uploaded-file.type';
 
 import { ListCategoriesUseCase } from '../../domain/use-cases/list-categories.use-case';
 import { GetCategoryUseCase } from '../../domain/use-cases/get-category.use-case';
@@ -51,7 +41,6 @@ export class CategoriesController {
     private readonly updateCategoryUseCase: UpdateCategoryUseCase,
     private readonly updateBatchOrderUseCase: UpdateBatchOrderUseCase,
     private readonly deleteCategoryUseCase: DeleteCategoryUseCase,
-    private readonly minioService: MinioService,
   ) {}
 
   @Get()
@@ -66,113 +55,30 @@ export class CategoriesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
-  @ApiOperation({ summary: 'Criar categoria com imagem' })
+  @ApiOperation({ summary: 'Criar categoria' })
   @ApiResponse({
     status: 201,
     type: CategoryResponseDto,
   })
-  async create(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: CreateCategoryDto,
-  ) {
-    let image: string | null = null;
-
-    if (file) {
-      const croppedBuffer = await sharp(file.buffer)
-        .resize(92, 92, {
-          fit: 'cover',
-          position: 'center',
-        })
-        .webp({ quality: 90 })
-        .toBuffer();
-      const upload = await this.minioService.uploadFile(
-        {
-          ...file,
-          originalname: 'file.webp',
-          buffer: croppedBuffer,
-          mimetype: 'image/webp',
-        } as UploadedFileType,
-        'categories',
-      );
-      image = upload.fileName;
-    }
+  async create(@Body() body: CreateCategoryDto) {
     return this.createCategoryUseCase.execute({
       title: body.title,
-      image,
+      image: null,
       isVisible: body.isVisible ?? true,
       excludeFromBestSeller: body.excludeFromBestSeller ?? false,
     });
   }
 
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
   @ApiOperation({ summary: 'Atualizar categoria' })
   async update(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
     @Body() body: UpdateCategoryDto,
   ) {
-    let image: string | null | undefined;
-    const current = await this.getCategoryUseCase.execute(id);
-    if (body.removeImage) {
-      if (current?.image) {
-        await this.minioService.deleteFile(current.image);
-      }
-      image = null;
-    }
-
-    if (file) {
-      if (current?.image) {
-        await this.minioService.deleteFile(current.image);
-      }
-
-      const croppedBuffer = await sharp(file.buffer)
-        .resize(92, 92, {
-          fit: 'cover',
-          position: 'center',
-        })
-        .webp({ quality: 90 })
-        .toBuffer();
-
-      const upload = await this.minioService.uploadFile(
-        {
-          ...file,
-          originalname: 'file.webp',
-          buffer: croppedBuffer,
-          mimetype: 'image/webp',
-        } as UploadedFileType,
-        'categories',
-      );
-
-      image = upload.fileName;
-    }
-
     return this.updateCategoryUseCase.execute(id, {
       ...(body.title !== undefined && { title: body.title }),
       ...(body.isVisible !== undefined && { isVisible: body.isVisible }),
       ...(body.excludeFromBestSeller !== undefined && { excludeFromBestSeller: body.excludeFromBestSeller }),
-      ...(image !== undefined && { image }),
     });
   }
 
@@ -188,11 +94,6 @@ export class CategoriesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deletar categoria' })
   async delete(@Param('id') id: string) {
-    const category = await this.getCategoryUseCase.execute(id);
-    if (category?.image) {
-      await this.minioService.deleteFile(category.image);
-    }
-
     await this.deleteCategoryUseCase.execute(id);
   }
 }

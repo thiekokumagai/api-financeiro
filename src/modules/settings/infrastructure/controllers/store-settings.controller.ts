@@ -20,13 +20,12 @@ export class StoreSettingsController {
   @ApiResponse({ status: 200 })
   async getStoreStatus() {
     const settings = await this.getSettingsUseCase.execute();
-    const businessHours = settings.businessHours || [];
+    const businessHours = settings?.businessHours || [];
 
     if (!businessHours || businessHours.length === 0) {
       return { isOpen: false };
     }
 
-    // Usar fuso horário de Campo Grande (AMT)
     const nowStr = new Date().toLocaleString('en-US', {
       timeZone: 'America/Campo_Grande',
     });
@@ -53,15 +52,6 @@ export class StoreSettingsController {
     return { isOpen };
   }
 
-  @Post('calculate-freight')
-  @ApiOperation({ summary: 'Calcular frete para a vitrine' })
-  async calculateFreight(@Body() body: { destination: string }) {
-    return {
-      distanceKm: 5,
-      freightPrice: 15,
-    };
-  }
-
   @Get('manifest.json')
   @Public()
   @ApiOperation({ summary: 'Obter manifest.json dinâmico para PWA' })
@@ -70,49 +60,25 @@ export class StoreSettingsController {
     try {
       settings = await this.getSettingsUseCase.execute();
     } catch (e) {
-      settings = { storeName: 'LojaPod', faviconUrl: null };
+      settings = { storeName: 'Financeiro' };
     }
 
-    const minioUrl = process.env.MINIO_PUBLIC_URL || '';
-    const bucket = process.env.MINIO_BUCKET || 'lojapod';
     const adminFrontendUrl = (process.env.ADMIN_FRONTEND_URL || '').replace(
       /\/$/,
       '',
     );
 
-    // Função para montar a URL da imagem (apenas para paths relativos de minio)
-
-    // Função para montar a URL da imagem (apenas para paths relativos de minio)
-    const buildImg = (path?: string | null) => {
-      if (!path) return '';
-      if (path.startsWith('http')) return path;
-      return `${minioUrl}/${bucket}/${path.replace(/^\//, '')}`;
-    };
-
-    let icon192Src = adminFrontendUrl
+    const icon192Src = adminFrontendUrl
       ? `${adminFrontendUrl}/favicon-192x192.png`
       : '/favicon-192x192.png';
-    let icon512Src = adminFrontendUrl
+    const icon512Src = adminFrontendUrl
       ? `${adminFrontendUrl}/favicon-512x512.png`
       : '/favicon-512x512.png';
 
-    if (settings.faviconUrl) {
-      if (settings.faviconUrl.startsWith('http')) {
-        icon192Src = settings.faviconUrl;
-        icon512Src = settings.faviconUrl;
-      } else {
-        icon192Src = buildImg(settings.faviconUrl);
-        const icon512Path = settings.faviconUrl.includes('192')
-          ? settings.faviconUrl.replace('192', '512')
-          : settings.faviconUrl;
-        icon512Src = buildImg(icon512Path);
-      }
-    }
-
     return {
-      name: settings.storeName || 'Loja Pod',
-      short_name: settings.storeName || 'Loja Pod',
-      description: 'Painel Administrativo da loja',
+      name: settings?.storeName || 'Financeiro',
+      short_name: settings?.storeName || 'Financeiro',
+      description: 'Painel Administrativo Financeiro',
       theme_color: '#ffffff',
       background_color: '#ffffff',
       display: 'standalone',
