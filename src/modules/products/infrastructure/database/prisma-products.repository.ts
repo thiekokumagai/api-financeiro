@@ -244,7 +244,7 @@ export class PrismaProductsRepository implements IProductsRepository {
         categoryId: original.categoryId,
         price: original.price,
         costPrice: original.costPrice,
-        stock: 0,
+        stock: original.stock,
         isVisible: original.isVisible,
       },
       include: {
