@@ -82,7 +82,6 @@ export class PrismaProductsRepository implements IProductsRepository {
       where.AND = searchWords.map((word) => ({
         OR: [
           { title: { contains: word, mode: 'insensitive' } },
-          { description: { contains: word, mode: 'insensitive' } },
           { category: { title: { contains: word, mode: 'insensitive' } } },
         ],
       }));
@@ -125,7 +124,6 @@ export class PrismaProductsRepository implements IProductsRepository {
       where.AND = searchWords.map((word) => ({
         OR: [
           { title: { contains: word, mode: 'insensitive' } },
-          { description: { contains: word, mode: 'insensitive' } },
           { category: { title: { contains: word, mode: 'insensitive' } } },
         ],
       }));
