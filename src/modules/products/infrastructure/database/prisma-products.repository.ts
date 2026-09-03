@@ -77,8 +77,15 @@ export class PrismaProductsRepository implements IProductsRepository {
       deletedAt: null,
     };
 
-    if (params.search) {
-      where.title = { contains: params.search, mode: 'insensitive' };
+    const searchWords = params.search?.trim().split(/\s+/).filter(Boolean);
+    if (searchWords && searchWords.length > 0) {
+      where.AND = searchWords.map((word) => ({
+        OR: [
+          { title: { contains: word, mode: 'insensitive' } },
+          { description: { contains: word, mode: 'insensitive' } },
+          { category: { title: { contains: word, mode: 'insensitive' } } },
+        ],
+      }));
     }
 
     if (params.categoryId) {
@@ -107,13 +114,21 @@ export class PrismaProductsRepository implements IProductsRepository {
   }): Promise<number> {
     const storeId = this.tenantContextService.getStoreId() || undefined;
 
+    const searchWords = params.search?.trim().split(/\s+/).filter(Boolean);
+
     const where: any = {
       storeId,
       deletedAt: null,
     };
 
-    if (params.search) {
-      where.title = { contains: params.search, mode: 'insensitive' };
+    if (searchWords && searchWords.length > 0) {
+      where.AND = searchWords.map((word) => ({
+        OR: [
+          { title: { contains: word, mode: 'insensitive' } },
+          { description: { contains: word, mode: 'insensitive' } },
+          { category: { title: { contains: word, mode: 'insensitive' } } },
+        ],
+      }));
     }
 
     if (params.categoryId) {
