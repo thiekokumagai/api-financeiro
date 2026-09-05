@@ -82,13 +82,34 @@ export class GetDashboardStatsUseCase {
       deletedAt: null
     };
     
-    const produtosAtivos = await this.prisma.product.count({
-      where: { ...baseProductWhere, isVisible: true },
+    const allProducts = await this.prisma.product.findMany({
+      where: baseProductWhere,
+      select: { isVisible: true, stock: true, costPrice: true, price: true }
     });
-    
-    const produtosInativos = await this.prisma.product.count({
-      where: { ...baseProductWhere, isVisible: false },
-    });
+
+    let produtosAtivos = 0;
+    let produtosInativos = 0;
+    let valorCustoProdutos = 0;
+    let valorCustoProdutosInativos = 0;
+    let valorVendaTotalProdutos = 0;
+    let quantidadeTotalEstoque = 0;
+
+    for (const p of allProducts) {
+      const stock = p.stock || 0;
+      const cost = Number(p.costPrice || 0);
+      const price = Number(p.price || 0);
+
+      quantidadeTotalEstoque += stock;
+
+      if (p.isVisible) {
+        produtosAtivos++;
+        valorCustoProdutos += stock * cost;
+      } else {
+        produtosInativos++;
+        valorCustoProdutosInativos += stock * cost;
+      }
+      valorVendaTotalProdutos += stock * price;
+    }
 
     // 2.6 Fetch Analytics (Behavior)
     const sessions = await this.prisma.storeSession.findMany({
@@ -331,6 +352,10 @@ export class GetDashboardStatsUseCase {
         totalProdutosVendidos,
         produtosAtivos,
         produtosInativos,
+        quantidadeTotalEstoque,
+        valorCustoProdutos,
+        valorCustoProdutosInativos,
+        valorVendaTotalProdutos,
         visitas,
         conversao,
         tempoMedio,
