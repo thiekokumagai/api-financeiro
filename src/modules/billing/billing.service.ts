@@ -24,7 +24,19 @@ export class BillingService {
       let value: unknown = payload;
       for (const key of path.split('.')) {
         if (!value || typeof value !== 'object') { value = undefined; break; }
-        value = (value as Payload)[key];
+        if (Array.isArray(value)) {
+          const idx = Number(key);
+          if (!isNaN(idx)) {
+            value = value[idx];
+          } else if (value.length > 0) {
+            value = (value[0] as Payload)?.[key];
+          } else {
+            value = undefined;
+            break;
+          }
+        } else {
+          value = (value as Payload)[key];
+        }
       }
       if (value !== undefined && value !== null && value !== '') return value;
     }
