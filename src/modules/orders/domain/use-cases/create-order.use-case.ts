@@ -65,10 +65,24 @@ export class CreateOrderUseCase {
 
       const itemsTotal = Number(order.itemsTotal) || 0;
       const installmentSurcharge = Number(order.installmentSurcharge) || 0;
-      const receiptSurcharge = Number(order.receiptSurcharge) || 0;
+      let receiptSurcharge = Number(order.receiptSurcharge) || 0;
       const paymentDiscount = Number(order.paymentDiscount) || 0;
-      const receiptDiscount = Number(order.receiptDiscount) || 0;
+      let receiptDiscount = Number(order.receiptDiscount) || 0;
       const cDiscount = Number(order.couponDiscount) || 0;
+
+      if (data.totalOrder !== undefined && (!data.receiptDiscount && !data.receiptSurcharge)) {
+        const expectedTotal = Math.round((itemsTotal + installmentSurcharge - paymentDiscount - cDiscount) * 100) / 100;
+        const diff = Math.round((data.totalOrder - expectedTotal) * 100) / 100;
+        if (diff < 0) {
+          receiptDiscount = Math.abs(diff);
+          receiptSurcharge = 0;
+        } else if (diff > 0) {
+          receiptSurcharge = diff;
+          receiptDiscount = 0;
+        }
+        order.receiptDiscount = receiptDiscount;
+        order.receiptSurcharge = receiptSurcharge;
+      }
 
       const calculatedTotal =
         Math.round(

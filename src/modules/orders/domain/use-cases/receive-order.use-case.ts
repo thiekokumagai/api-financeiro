@@ -62,9 +62,22 @@ export class ReceiveOrderUseCase {
 
     const itemsTotal = Number(order.itemsTotal) || 0;
     const pDiscount = Number(order.paymentDiscount) || 0;
-    const rDiscount = Number(order.receiptDiscount) || 0;
     const cDiscount = Number(order.couponDiscount) || 0;
     const iSurcharge = Number(order.installmentSurcharge) || 0;
+
+    if (payload.receiptDiscount === undefined && payload.receiptSurcharge === undefined && payload.totalReceived !== undefined) {
+      const expectedTotal = Math.round((itemsTotal + iSurcharge - pDiscount - cDiscount) * 100) / 100;
+      const diff = Math.round((payload.totalReceived - expectedTotal) * 100) / 100;
+      if (diff < 0) {
+        order.receiptDiscount = Math.abs(diff);
+        order.receiptSurcharge = 0;
+      } else if (diff > 0) {
+        order.receiptSurcharge = diff;
+        order.receiptDiscount = 0;
+      }
+    }
+
+    const rDiscount = Number(order.receiptDiscount) || 0;
     const rSurcharge = Number(order.receiptSurcharge) || 0;
 
     order.totalOrder =
