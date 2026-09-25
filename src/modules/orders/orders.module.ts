@@ -16,13 +16,11 @@ import { UpdateOrderUseCase } from './domain/use-cases/update-order.use-case';
 import { SettingsModule } from '../settings/settings.module';
 import { CouponsModule } from '../coupons/coupons.module';
 import { UsersModule } from '../users/users.module';
-import { PushNotificationService } from '../../shared/services/push-notification.service';
 
 @Module({
   imports: [SettingsModule, CouponsModule, UsersModule],
   controllers: [OrdersController, StoreOrdersController],
   providers: [
-    PushNotificationService,
     ListOrdersUseCase,
     GetOrderDetailUseCase,
     CancelOrderUseCase,

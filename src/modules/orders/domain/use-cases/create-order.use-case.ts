@@ -3,8 +3,6 @@ import { IOrdersRepository } from '../repositories/iorders.repository';
 import { Order } from '../entities/order.entity';
 import { ValidateCouponUseCase } from '../../../coupons/domain/use-cases/validate-coupon.use-case';
 import type { ICouponsRepository } from '../../../coupons/domain/repositories/icoupons.repository';
-import { PushNotificationService } from '../../../../shared/services/push-notification.service';
-import { IUsersRepository } from '../../../users/domain/repositories/iusers.repository';
 import { EventsGateway } from '../../../events/events.gateway';
 import { TenantContextService } from '../../../tenant/tenant-context.service';
 
@@ -15,8 +13,6 @@ export class CreateOrderUseCase {
     private readonly validateCouponUseCase: ValidateCouponUseCase,
     @Inject('ICouponsRepository')
     private readonly couponsRepository: ICouponsRepository,
-    private readonly pushNotificationService: PushNotificationService,
-    private readonly usersRepository: IUsersRepository,
     private readonly eventsGateway: EventsGateway,
     private readonly tenantContextService: TenantContextService,
   ) {}
@@ -108,36 +104,7 @@ export class CreateOrderUseCase {
         }
       }
 
-      // Disparar Notificação Push
-      try {
-        const admins = await this.usersRepository.findAll();
-        const tokens: string[] = [];
-        const webSubscriptions: any[] = [];
-        admins.forEach(u => {
-          if (u.expoPushToken) {
-            tokens.push(...u.expoPushToken.split(',').filter(Boolean));
-          }
-          if (u.webPushSubscription) {
-            if (Array.isArray(u.webPushSubscription)) {
-              webSubscriptions.push(...u.webPushSubscription);
-            } else {
-              webSubscriptions.push(u.webPushSubscription as any);
-            }
-          }
-        });
-        if (webSubscriptions.length > 0) {
-          const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-          const formattedValue = formatter.format(Number(savedOrder.totalOrder || 0));
-          this.pushNotificationService.sendNotifications(
-            `(${formattedValue}) Oba! Chegou pedido 🤩`,
-            `Pedido nº #${savedOrder.orderNumber} - ${savedOrder.customerName}`,
-            { orderId: savedOrder.id },
-            webSubscriptions
-          ).catch(e => console.error(e));
-        }
-      } catch (err) {
-        console.error('Erro ao buscar tokens para notificação', err);
-      }
+
 
 
 
