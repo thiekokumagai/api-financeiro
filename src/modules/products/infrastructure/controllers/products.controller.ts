@@ -34,6 +34,8 @@ import { UpdateProductStockUseCase } from '../../domain/use-cases/update-product
 import { GetStockHistoryUseCase } from '../../domain/use-cases/get-stock-history.use-case';
 import { DeleteProductUseCase } from '../../domain/use-cases/delete-product.use-case';
 import { DuplicateProductUseCase } from '../../domain/use-cases/duplicate-product.use-case';
+import { EventsGateway } from '../../../events/events.gateway';
+import { clearStoreProductsCache } from './store-products.controller';
 
 @ApiTags('Products')
 @ApiBearerAuth('access-token')
@@ -49,6 +51,7 @@ export class ProductsController {
     private readonly getStockHistoryUseCase: GetStockHistoryUseCase,
     private readonly deleteProductUseCase: DeleteProductUseCase,
     private readonly duplicateProductUseCase: DuplicateProductUseCase,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   @Get()
@@ -85,8 +88,11 @@ export class ProductsController {
     description: 'Produto criado com sucesso',
     type: ProductResponseDto,
   })
-  create(@Body() dto: CreateProductDto) {
-    return this.createProductUseCase.execute(dto);
+  async create(@Body() dto: CreateProductDto) {
+    const result = await this.createProductUseCase.execute(dto);
+    clearStoreProductsCache();
+    this.eventsGateway.server?.emit('products.refresh');
+    return result;
   }
 
   @Patch(':id')
@@ -96,17 +102,23 @@ export class ProductsController {
     description: 'Produto atualizado com sucesso',
     type: ProductResponseDto,
   })
-  update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
-    return this.updateProductUseCase.execute(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+    const result = await this.updateProductUseCase.execute(id, dto);
+    clearStoreProductsCache();
+    this.eventsGateway.server?.emit('products.refresh');
+    return result;
   }
 
   @Patch(':id/stock')
   @ApiOperation({ summary: 'Atualizar estoque do produto' })
-  updateStock(
+  async updateStock(
     @Param('id') id: string,
     @Body() dto: UpdateProductStockDto,
   ) {
-    return this.updateProductStockUseCase.execute(id, dto);
+    const result = await this.updateProductStockUseCase.execute(id, dto);
+    clearStoreProductsCache();
+    this.eventsGateway.server?.emit('products.refresh');
+    return result;
   }
 
   @Get(':id/stock-history')
@@ -117,13 +129,19 @@ export class ProductsController {
 
   @Post(':id/duplicate')
   @ApiOperation({ summary: 'Duplicar produto completo com estoque zerado' })
-  duplicate(@Param('id') id: string) {
-    return this.duplicateProductUseCase.execute(id);
+  async duplicate(@Param('id') id: string) {
+    const result = await this.duplicateProductUseCase.execute(id);
+    clearStoreProductsCache();
+    this.eventsGateway.server?.emit('products.refresh');
+    return result;
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {
-    return this.deleteProductUseCase.execute(id);
+    const result = await this.deleteProductUseCase.execute(id);
+    clearStoreProductsCache();
+    this.eventsGateway.server?.emit('products.refresh');
+    return result;
   }
 }

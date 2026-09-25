@@ -28,6 +28,7 @@ import { CreateCategoryUseCase } from '../../domain/use-cases/create-category.us
 import { UpdateCategoryUseCase } from '../../domain/use-cases/update-category.use-case';
 import { UpdateBatchOrderUseCase } from '../../domain/use-cases/update-batch-order.use-case';
 import { DeleteCategoryUseCase } from '../../domain/use-cases/delete-category.use-case';
+import { clearStoreCategoriesCache } from './store-categories.controller';
 
 @ApiTags('Categories')
 @ApiBearerAuth('access-token')
@@ -61,12 +62,14 @@ export class CategoriesController {
     type: CategoryResponseDto,
   })
   async create(@Body() body: CreateCategoryDto) {
-    return this.createCategoryUseCase.execute({
+    const result = await this.createCategoryUseCase.execute({
       title: body.title,
       image: null,
       isVisible: body.isVisible ?? true,
       excludeFromBestSeller: body.excludeFromBestSeller ?? false,
     });
+    clearStoreCategoriesCache();
+    return result;
   }
 
   @Patch(':id')
@@ -75,12 +78,14 @@ export class CategoriesController {
     @Param('id') id: string,
     @Body() body: UpdateCategoryDto,
   ) {
-    return this.updateCategoryUseCase.execute(id, {
+    const result = await this.updateCategoryUseCase.execute(id, {
       ...(body.title !== undefined && { title: body.title }),
       ...(body.isVisible !== undefined && { isVisible: body.isVisible }),
       ...(body.excludeFromBestSeller !== undefined && { excludeFromBestSeller: body.excludeFromBestSeller }),
       ...(body.removeImage ? { image: null } : {}),
     });
+    clearStoreCategoriesCache();
+    return result;
   }
 
   @Patch('batch/order')
@@ -88,6 +93,7 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Reordenar categorias' })
   async updateBatchOrder(@Body() body: UpdateOrderDto) {
     await this.updateBatchOrderUseCase.execute(body.items);
+    clearStoreCategoriesCache();
     return { success: true };
   }
 
@@ -96,5 +102,6 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Deletar categoria' })
   async delete(@Param('id') id: string) {
     await this.deleteCategoryUseCase.execute(id);
+    clearStoreCategoriesCache();
   }
 }

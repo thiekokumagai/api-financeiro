@@ -3,6 +3,9 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { GetSettingsUseCase } from '../../domain/use-cases/get-settings.use-case';
 import { Public } from '../../../auth/infrastructure/decorators/public.decorator';
 
+const storeSettingsCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 30 * 1000;
+
 @ApiTags('Store Settings')
 @Public()
 @Controller('store/settings')
@@ -14,7 +17,14 @@ export class StoreSettingsController {
   @ApiOperation({ summary: 'Obter configurações públicas da loja (vitrine)' })
   @ApiResponse({ status: 200 })
   async getStoreSettings() {
-    return this.getSettingsUseCase.execute();
+    const cached = storeSettingsCache.get('settings');
+    const now = Date.now();
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+    const result = await this.getSettingsUseCase.execute();
+    storeSettingsCache.set('settings', { data: result, timestamp: now });
+    return result;
   }
 
   @Get('status')

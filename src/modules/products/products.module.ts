@@ -17,10 +17,11 @@ import { StockIntelligenceCronService } from './infrastructure/cron/stock-intell
 import { ProductsRankingCronService } from './infrastructure/cron/products-ranking.cron.service';
 
 import { SettingsModule } from '../settings/settings.module';
+import { EventsModule } from '../events/events.module';
 import { PushNotificationService } from '../../shared/services/push-notification.service';
 
 @Module({
-  imports: [SettingsModule],
+  imports: [SettingsModule, EventsModule],
   controllers: [ProductsController, StoreProductsController],
   providers: [
     PushNotificationService,
