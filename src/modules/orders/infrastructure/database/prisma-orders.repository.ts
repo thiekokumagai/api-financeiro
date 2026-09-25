@@ -94,10 +94,35 @@ export class PrismaOrdersRepository implements IOrdersRepository {
       const cleanSearch = filters.search.replace(/\D/g, '');
       if (cleanSearch.length > 0) {
         where.OR.push({ customerPhone: { contains: cleanSearch, mode: 'insensitive' } });
+
+        if (cleanSearch.length === 11) {
+          const ddd = cleanSearch.substring(0, 2);
+          const p1 = cleanSearch.substring(2, 7);
+          const p2 = cleanSearch.substring(7);
+
+          where.OR.push({ customerPhone: { contains: `(${ddd}) ${p1}-${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `(${ddd})${p1}-${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `(${ddd}) ${p1}${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `${ddd} ${p1}-${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `(${ddd}) ${p1.substring(0, 1)} ${p1.substring(1)}-${p2}`, mode: 'insensitive' } });
+        } else if (cleanSearch.length === 10) {
+          const ddd = cleanSearch.substring(0, 2);
+          const p1 = cleanSearch.substring(2, 6);
+          const p2 = cleanSearch.substring(6);
+
+          where.OR.push({ customerPhone: { contains: `(${ddd}) ${p1}-${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `(${ddd})${p1}-${p2}`, mode: 'insensitive' } });
+          where.OR.push({ customerPhone: { contains: `(${ddd}) ${p1}${p2}`, mode: 'insensitive' } });
+        } else {
+          let f1 = cleanSearch;
+          if (cleanSearch.length >= 2) f1 = '(' + cleanSearch.substring(0, 2) + (cleanSearch.length > 2 ? ') ' + cleanSearch.substring(2) : '');
+          if (cleanSearch.length >= 7) f1 = f1.substring(0, 10) + '-' + f1.substring(10);
+          where.OR.push({ customerPhone: { contains: f1, mode: 'insensitive' } });
+        }
       }
 
       const numSearch = Number(cleanSearch);
-      if (!isNaN(numSearch) && numSearch > 0) {
+      if (!isNaN(numSearch) && numSearch > 0 && numSearch <= 2147483647) {
         where.OR.push({ orderNumber: numSearch });
       }
     }
