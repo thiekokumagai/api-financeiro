@@ -17,14 +17,7 @@ export class StoreSettingsController {
   @ApiOperation({ summary: 'Obter configurações públicas da loja (vitrine)' })
   @ApiResponse({ status: 200 })
   async getStoreSettings() {
-    const cached = storeSettingsCache.get('settings');
-    const now = Date.now();
-    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-      return cached.data;
-    }
-    const result = await this.getSettingsUseCase.execute();
-    storeSettingsCache.set('settings', { data: result, timestamp: now });
-    return result;
+    return this.getSettingsUseCase.execute();
   }
 
   @Get('status')
