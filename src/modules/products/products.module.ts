@@ -12,6 +12,8 @@ import { UpdateProductStockUseCase } from './domain/use-cases/update-product-sto
 import { GetStockHistoryUseCase } from './domain/use-cases/get-stock-history.use-case';
 import { DeleteProductUseCase } from './domain/use-cases/delete-product.use-case';
 import { DuplicateProductUseCase } from './domain/use-cases/duplicate-product.use-case';
+import { ComputeStockIntelligenceUseCase } from './domain/use-cases/compute-stock-intelligence.use-case';
+import { StockIntelligenceCronService } from './infrastructure/cron/stock-intelligence.cron.service';
 import { ProductsRankingCronService } from './infrastructure/cron/products-ranking.cron.service';
 
 @Module({
@@ -26,12 +28,14 @@ import { ProductsRankingCronService } from './infrastructure/cron/products-ranki
     GetStockHistoryUseCase,
     DeleteProductUseCase,
     DuplicateProductUseCase,
+    ComputeStockIntelligenceUseCase,
     ProductsRankingCronService,
+    StockIntelligenceCronService,
     {
       provide: IProductsRepository,
       useClass: PrismaProductsRepository,
     },
   ],
-  exports: [IProductsRepository],
+  exports: [IProductsRepository, ComputeStockIntelligenceUseCase],
 })
 export class ProductsModule {}

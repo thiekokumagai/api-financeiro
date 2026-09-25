@@ -232,6 +232,14 @@ model Product {
   costPrice Decimal? @db.Decimal(10, 2)
   stock     Int      @default(0)
 
+  // Stock Intelligence & Risk metrics
+  dailyRunRate     Float?
+  coverageDays     Int?
+  minStock         Int?
+  daysWithoutSales Int?
+  growthPercentage Float?
+  stockAlertState  String?   @default("OK")
+
   store          Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   category       Category        @relation(fields: [categoryId], references: [id])
   orderItems     OrderItem[]
