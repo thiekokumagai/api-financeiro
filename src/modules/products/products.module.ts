@@ -16,10 +16,14 @@ import { ComputeStockIntelligenceUseCase } from './domain/use-cases/compute-stoc
 import { StockIntelligenceCronService } from './infrastructure/cron/stock-intelligence.cron.service';
 import { ProductsRankingCronService } from './infrastructure/cron/products-ranking.cron.service';
 
+import { SettingsModule } from '../settings/settings.module';
+import { PushNotificationService } from '../../shared/services/push-notification.service';
+
 @Module({
-  imports: [],
+  imports: [SettingsModule],
   controllers: [ProductsController, StoreProductsController],
   providers: [
+    PushNotificationService,
     ListProductsUseCase,
     FindProductByIdUseCase,
     CreateProductUseCase,
