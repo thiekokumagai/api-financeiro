@@ -25,8 +25,21 @@ export class StoreProductsController {
       isVisible: true,
     });
     
+    // Payload ultra-leve otimizado para o catálogo público (carregamento instantâneo)
+    const publicProducts = products.map((p: any) => ({
+      id: p.id,
+      title: p.title || p.name,
+      price: p.price,
+      promotionalPrice: p.promotionalPrice,
+      imageUrl: p.imageUrl,
+      stock: p.stock,
+      categoryId: p.categoryId,
+      isVisible: p.isVisible,
+      description: p.description,
+    }));
+
     return {
-      data: products,
+      data: publicProducts,
       total,
     };
   }
