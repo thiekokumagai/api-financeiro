@@ -10,7 +10,7 @@ import {
   IsBoolean,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OrderStatus, PaymentStatus } from '../../domain/entities/order.entity';
 import { CreateOrderItemDto } from './create-order-item.dto';
 
@@ -180,6 +180,7 @@ export class CreateOrderDto {
     example: 100.00,
     description: 'Valor em dinheiro fornecido pelo cliente',
   })
+  @Transform(({ value }) => (value !== undefined && value !== null && !isNaN(Number(value)) ? Number(Number(value).toFixed(2)) : value))
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @IsOptional()
@@ -189,6 +190,7 @@ export class CreateOrderDto {
     example: 15.50,
     description: 'Troco a ser devolvido',
   })
+  @Transform(({ value }) => (value !== undefined && value !== null && !isNaN(Number(value)) ? Number(Number(value).toFixed(2)) : value))
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @IsOptional()
