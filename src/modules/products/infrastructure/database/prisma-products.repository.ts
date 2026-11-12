@@ -167,26 +167,31 @@ export class PrismaProductsRepository implements IProductsRepository {
   ): Promise<Product> {
     const storeId = this.tenantContextService.getStoreId() || undefined;
 
-    const product = await this.prisma.product.findFirst({
-      where: { id: productId, storeId, deletedAt: null },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Produto não encontrado');
-    }
-
-    const previousStock = product.stock;
-    let newStock = previousStock;
-
-    if (type === 'ADD') {
-      newStock = previousStock + quantity;
-    } else if (type === 'SUBTRACT') {
-      newStock = Math.max(0, previousStock - quantity);
-    } else if (type === 'SET') {
-      newStock = Math.max(0, quantity);
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      // Trava a linha do produto até o fim da transação: requisições simultâneas
+      // (ex.: cliques rápidos em +/-) passam a ser aplicadas em fila, sem uma
+      // sobrescrever a outra com um estoque lido desatualizado
+      await tx.$queryRaw`SELECT id FROM products WHERE id = ${productId} FOR UPDATE`;
+
+      const product = await tx.product.findFirst({
+        where: { id: productId, storeId, deletedAt: null },
+      });
+
+      if (!product) {
+        throw new NotFoundException('Produto não encontrado');
+      }
+
+      const previousStock = product.stock;
+      let newStock = previousStock;
+
+      if (type === 'ADD') {
+        newStock = previousStock + quantity;
+      } else if (type === 'SUBTRACT') {
+        newStock = Math.max(0, previousStock - quantity);
+      } else if (type === 'SET') {
+        newStock = Math.max(0, quantity);
+      }
+
       const updatedProduct = await tx.product.update({
         where: { id: productId },
         data: { stock: newStock },
