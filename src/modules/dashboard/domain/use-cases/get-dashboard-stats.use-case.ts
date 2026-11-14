@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../../prisma/prisma.service';
+import { resolveDashboardPeriod } from '../utils/period.util';
 import {
   RankingSortBy,
   calculateOrderItemsProfit,
@@ -41,6 +42,8 @@ function toRankingItem(e: RankingEntry) {
     categoryTitle: e.categoryTitle,
     quantity: e.quantity,
     totalRevenue: round2(e.totalRevenue),
+    // Receita líquida (após descontos) das vendas com custo; base da margem.
+    receitaLiquida: round2(e.costedNetRevenue),
     // lucro/margem null = nenhuma venda com custo cadastrado (não é 100%).
     lucro: e.hasCostedSales ? round2(e.profit) : null,
     margem: e.hasCostedSales ? marginOf(e.profit, e.costedNetRevenue) : null,
@@ -76,34 +79,10 @@ export class GetDashboardStatsUseCase {
       );
     }
 
-    let start: Date;
-    let end: Date;
-
-    if (filters.startDate && filters.endDate) {
-      start = new Date(filters.startDate);
-      end = new Date(filters.endDate);
-    } else {
-      // Default to "Hoje" (Today) in local/server time
-      const today = new Date();
-      start = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-        0,
-        0,
-        0,
-        0,
-      );
-      end = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-        23,
-        59,
-        59,
-        999,
-      );
-    }
+    const { start, end } = resolveDashboardPeriod(
+      filters.startDate,
+      filters.endDate,
+    );
 
     // 1. Fetch Orders within range that are not CANCELLED
     const orders = await this.prisma.order.findMany({
@@ -472,6 +451,7 @@ export class GetDashboardStatsUseCase {
         descontosConcedidos: round2(totalDescontos),
         taxaCartao: round2(totalTaxaCartao),
         receitaItens: round2(receitaItens),
+        receitaComCusto: round2(receitaComCusto),
       },
       semCusto: {
         count: semCustoMap.size,
