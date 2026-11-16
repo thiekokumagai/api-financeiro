@@ -19,9 +19,20 @@ export class UpdateOrderStatusUseCase {
   async execute(
     id: string,
     payload: { status?: OrderStatus; paymentStatus?: PaymentStatus },
+    currentUser?: { storeId?: string | null; role?: string } | null,
   ): Promise<Order> {
-    const order = await this.ordersRepository.findById(id);
-    if (!order) {
+    const storeFilter =
+      currentUser && currentUser.role !== 'SUPER_ADMIN'
+        ? currentUser.storeId ?? '__NO_STORE__'
+        : undefined;
+
+    const order = await this.ordersRepository.findById(id, storeFilter);
+    if (
+      !order ||
+      (currentUser &&
+        currentUser.role !== 'SUPER_ADMIN' &&
+        (!currentUser.storeId || order.storeId !== currentUser.storeId))
+    ) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 

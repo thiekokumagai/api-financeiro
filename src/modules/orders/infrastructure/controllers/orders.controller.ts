@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/infrastructure/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../auth/infrastructure/decorators/current-user.decorator';
 import { QueryOrdersDto } from '../dtos/query-orders.dto';
 import { CreateOrderDto } from '../dtos/create-order.dto';
 import { ListOrdersUseCase } from '../../domain/use-cases/list-orders.use-case';
@@ -102,8 +103,8 @@ export class OrdersController {
   @ApiOperation({ summary: 'Cancelar um pedido por ID' })
   @ApiResponse({ status: 200, description: 'Pedido cancelado com sucesso' })
   @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
-  async cancel(@Param('id') id: string) {
-    return this.cancelOrderUseCase.execute(id);
+  async cancel(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.cancelOrderUseCase.execute(id, user);
   }
 
   @Patch(':id/status')
@@ -114,16 +115,21 @@ export class OrdersController {
   async updateStatus(
     @Param('id') id: string,
     @Body() body: { status?: OrderStatus; paymentStatus?: PaymentStatus },
+    @CurrentUser() user: any,
   ) {
-    return this.updateOrderStatusUseCase.execute(id, body);
+    return this.updateOrderStatusUseCase.execute(id, body, user);
   }
 
   @Patch(':id/receive')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Receber pagamento de um pedido' })
   @ApiResponse({ status: 200, description: 'Pagamento recebido com sucesso' })
-  async receive(@Param('id') id: string, @Body() body: ReceiveOrderDto) {
-    return this.receiveOrderUseCase.execute(id, body);
+  async receive(
+    @Param('id') id: string,
+    @Body() body: ReceiveOrderDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.receiveOrderUseCase.execute(id, body, user);
   }
 
   @Post(':id/revert-receive')
@@ -133,8 +139,8 @@ export class OrdersController {
     status: 200,
     description: 'Recebimento revertido com sucesso',
   })
-  async revertReceive(@Param('id') id: string) {
-    return this.revertReceiveOrderUseCase.execute(id);
+  async revertReceive(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.revertReceiveOrderUseCase.execute(id, user);
   }
 
   @Patch(':id/print')

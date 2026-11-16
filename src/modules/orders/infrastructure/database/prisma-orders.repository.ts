@@ -214,18 +214,34 @@ export class PrismaOrdersRepository implements IOrdersRepository {
     return records.map((record) => this.mapToDomain(record));
   }
 
-  async findById(id: string): Promise<Order | null> {
-    const record = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        coupon: true,
-        items: {
+  async findById(id: string, storeId?: string): Promise<Order | null> {
+    const where: any = { id };
+    if (storeId) {
+      where.storeId = storeId;
+    }
+    const record = storeId
+      ? await this.prisma.order.findFirst({
+          where,
           include: {
-            product: true,
+            coupon: true,
+            items: {
+              include: {
+                product: true,
+              },
+            },
           },
-        },
-      },
-    });
+        })
+      : await this.prisma.order.findUnique({
+          where: { id },
+          include: {
+            coupon: true,
+            items: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        });
 
     if (!record) return null;
     return this.mapToDomain(record);
