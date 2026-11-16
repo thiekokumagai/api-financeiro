@@ -5,6 +5,7 @@ import {
   Order,
   OrderStatus,
   PaymentStatus,
+  CANNOT_CANCEL_COMPLETED_ORDER_MESSAGE,
 } from '../../domain/entities/order.entity';
 import {
   IOrdersRepository,
@@ -598,6 +599,10 @@ export class PrismaOrdersRepository implements IOrdersRepository {
 
       if (existingOrder.status === OrderStatus.CANCELLED) {
         return existingOrder;
+      }
+
+      if (existingOrder.status === OrderStatus.COMPLETED) {
+        throw new Error(CANNOT_CANCEL_COMPLETED_ORDER_MESSAGE);
       }
 
       for (const item of existingOrder.items) {
