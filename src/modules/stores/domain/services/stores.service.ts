@@ -163,6 +163,8 @@ export class StoresService {
       }
       if (dto.password && dto.password.trim()) {
         userUpdateData.password = await bcrypt.hash(dto.password.trim(), 10);
+        // Senha redefinida por outra pessoa: o admin não pode seguir entrando com o refresh token antigo.
+        userUpdateData.refreshToken = null;
       }
 
       if (Object.keys(userUpdateData).length > 0) {

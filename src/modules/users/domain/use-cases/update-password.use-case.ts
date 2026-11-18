@@ -22,8 +22,11 @@ export class UpdatePasswordUseCase {
 
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
 
+    // `refreshToken: null` derruba a renovação de todas as sessões abertas: quem estava logado com a
+    // senha antiga precisa entrar de novo. (O access token já emitido vale até expirar, no máximo 15 min.)
     await this.usersRepository.update(userId, {
       password: hashedPassword,
+      refreshToken: null,
     });
   }
 }
